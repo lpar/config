@@ -25,12 +25,12 @@ const (
 type Config struct {
 	AppName       string // Application name
 	FileBase      string // Base name for config file, default "config"
-	Location      Basis // Where to locate the config, default RelativeToUser
+	Location      Basis  // Where to locate the config, default RelativeToUser
 	fileData      *toml.Tree
-	loadAttempted bool // Did we try to lazy-load the config file yet?
-	PrefsFile     string // The resolved name of the preferences file, for display in your error messages
-	Errors        []error // List of errors encountered while trying to load the config
-	Warnings      []error // List of warnings encountered while trying to load the config
+	loadAttempted bool     // Did we try to lazy-load the config file yet?
+	PrefsFile     string   // The resolved name of the preferences file, for display in your error messages
+	Errors        []error  // List of errors encountered while trying to load the config
+	Warnings      []error  // List of warnings encountered while trying to load the config
 	TrueStrings   []string // String values which count as `true` (case-insensitive), default `["true"]`
 	FalseStrings  []string // String values which count as `false` (case-insensitive), default `["false"]`
 }
@@ -89,7 +89,7 @@ func (c *Config) loadTOML() {
 		c.Warnings = append(c.Warnings, err)
 		return
 	}
-	defer func () {
+	defer func() {
 		derr := pf.Close()
 		if derr != nil {
 			c.Errors = append(c.Errors, derr)
@@ -134,13 +134,13 @@ func (c *Config) ResolveString(list ...*string) string {
 func (c *Config) toString(x interface{}) string {
 	switch v := x.(type) {
 	case int64:
-		return strconv.FormatInt(v,10)
+		return strconv.FormatInt(v, 10)
 	case int:
-		return strconv.FormatInt(int64(v),10)
+		return strconv.FormatInt(int64(v), 10)
 	case bool:
 		return strconv.FormatBool(v)
 	case float64:
-		return strconv.FormatFloat(v,'f',-1,64)
+		return strconv.FormatFloat(v, 'f', -1, 64)
 	case string:
 		return v
 	}
@@ -287,4 +287,3 @@ func (c *Config) Default(x interface{}) *string {
 	}
 	return nil
 }
-

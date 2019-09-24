@@ -85,16 +85,16 @@ func TestConfig_FromFile(t *testing.T) {
 }
 
 func TestConfig_ResolveString(t *testing.T) {
-	var tests = []struct{
-		input []*string
+	var tests = []struct {
+		input  []*string
 		output string
-		nerrs int
+		nerrs  int
 	}{
-		{ []*string{PS("one") }, "one", 0},
-		{ []*string{nil, PS("two") }, "two", 0},
-		{ []*string{nil, nil, PS("value with spaces") }, "value with spaces", 0},
-		{ []*string{nil, nil, PS("2.71828") }, "2.71828", 0},
-		{ []*string{nil, nil}, "", 1},
+		{[]*string{PS("one")}, "one", 0},
+		{[]*string{nil, PS("two")}, "two", 0},
+		{[]*string{nil, nil, PS("value with spaces")}, "value with spaces", 0},
+		{[]*string{nil, nil, PS("2.71828")}, "2.71828", 0},
+		{[]*string{nil, nil}, "", 1},
 	}
 	lc := New("ResolveString")
 	for i, tt := range tests {
@@ -115,13 +115,13 @@ func verify(t *testing.T, funcname string, x *string, y string) {
 		return
 	}
 	if *x != y {
-		t.Errorf("%s returned %v, expected %v", funcname,*x, y)
+		t.Errorf("%s returned %v, expected %v", funcname, *x, y)
 	}
 }
 
 func TestConfig_toString(t *testing.T) {
-	var tests = []struct{
-		input interface{}
+	var tests = []struct {
+		input  interface{}
 		output string
 	}{
 		{"test value", "test value"},
@@ -148,16 +148,16 @@ func PS(s string) *string {
 }
 
 func TestConfig_ResolveInt(t *testing.T) {
-	var tests = []struct{
-		input []*string
+	var tests = []struct {
+		input  []*string
 		output int
-		nerrs int
+		nerrs  int
 	}{
-		{ []*string{PS("1") }, 1, 0},
-		{ []*string{nil, PS("0x2f") }, 47, 0},
-		{ []*string{nil, nil, PS("") }, 0, 1},
-		{ []*string{nil, nil, PS("2.612") }, 2, 0},
-		{ []*string{nil, nil, PS("a"), PS("2") }, 2, 1},
+		{[]*string{PS("1")}, 1, 0},
+		{[]*string{nil, PS("0x2f")}, 47, 0},
+		{[]*string{nil, nil, PS("")}, 0, 1},
+		{[]*string{nil, nil, PS("2.612")}, 2, 0},
+		{[]*string{nil, nil, PS("a"), PS("2")}, 2, 1},
 	}
 	lc := New("ResolveInt")
 	for i, tt := range tests {
@@ -173,16 +173,16 @@ func TestConfig_ResolveInt(t *testing.T) {
 }
 
 func TestConfig_ResolveFloat(t *testing.T) {
-	var tests = []struct{
-		input []*string
+	var tests = []struct {
+		input  []*string
 		output float64
-		nerrs int
+		nerrs  int
 	}{
-		{ []*string{PS("1") }, 1, 0},
-		{ []*string{nil, PS("3.14159") }, 3.14159, 0},
-		{ []*string{nil, nil, PS("-1") }, -1.0, 0},
-		{ []*string{nil, nil, PS("-2.612") }, -2.612, 0},
-		{ []*string{nil, nil, PS("a"), PS("2") }, 2, 1},
+		{[]*string{PS("1")}, 1, 0},
+		{[]*string{nil, PS("3.14159")}, 3.14159, 0},
+		{[]*string{nil, nil, PS("-1")}, -1.0, 0},
+		{[]*string{nil, nil, PS("-2.612")}, -2.612, 0},
+		{[]*string{nil, nil, PS("a"), PS("2")}, 2, 1},
 	}
 	lc := New("ResolveInt")
 	for i, tt := range tests {
@@ -197,12 +197,11 @@ func TestConfig_ResolveFloat(t *testing.T) {
 	}
 }
 
-
 func TestConfig_stringToBool(t *testing.T) {
-	var tests = []struct{
-		input string
+	var tests = []struct {
+		input  string
 		output bool
-		ok bool
+		ok     bool
 	}{
 		{"true", true, true},
 		{"false", false, true},
@@ -213,7 +212,7 @@ func TestConfig_stringToBool(t *testing.T) {
 		{"Maybe", false, false},
 	}
 	for _, tt := range tests {
-		r , ok := conf.stringToBool(tt.input)
+		r, ok := conf.stringToBool(tt.input)
 		if ok != tt.ok {
 			t.Errorf("stringToBool %s gave ok = %v, expected %v", tt.input, ok, tt.ok)
 		}
@@ -225,11 +224,11 @@ func TestConfig_stringToBool(t *testing.T) {
 
 func TestConfig_ResolveBool(t *testing.T) {
 	rv1 := conf.ResolveBool(nil, nil, PS("false"), PS("true"))
-	if rv1 != false	{
+	if rv1 != false {
 		t.Error("conf.ResolveBool test 1 failed")
 	}
 	rv2 := conf.ResolveBool(nil, nil, PS("true"), PS("false"))
-	if rv2 != true	{
+	if rv2 != true {
 		t.Error("conf.ResolveBool test 1 failed")
 	}
 	if !conf.ResolveBool(PS("Y")) {
@@ -240,10 +239,10 @@ func TestConfig_ResolveBool(t *testing.T) {
 func TestConfig_FromEnv(t *testing.T) {
 	s := "non-nil"
 	nonnil := &s
-	var tests = []struct{
-		envvar string
+	var tests = []struct {
+		envvar  string
 		nilness *string
-		value string
+		value   string
 	}{
 		{"MY_ENV_VAR", nonnil, "some bytes"},
 		{"MY_BLANK_ENV_VAR", nonnil, ""},
@@ -287,8 +286,7 @@ func TestConfig_Default(t *testing.T) {
 			return
 		}
 		if *pt != retvals[i] {
-			t.Errorf("Default gave %v for %T %v, expected %v", *pt, v,v ,retvals[i] )
+			t.Errorf("Default gave %v for %T %v, expected %v", *pt, v, v, retvals[i])
 		}
 	}
 }
-
