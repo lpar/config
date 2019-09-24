@@ -11,11 +11,14 @@ import (
 	"github.com/pelletier/go-toml"
 )
 
+// Basis is an enum used for indicating the basis for locating the config file.
 type Basis int
 
 const (
-	RelativeToUser Basis = iota // Locate config relative to user's home directory / `XDG_CONFIG_HOME`
-	RelativeToExecutable // Locate config relative to the executable, for cloud web applications
+	// RelativeToUser indicates that the config is located relative to user's home directory / `XDG_CONFIG_HOME`
+	RelativeToUser Basis = iota
+	// RelativeToExecutable indicates that the config is located in the same directory as the executable, for cloud web applications
+	RelativeToExecutable
 )
 
 // Config stores parameters and data needed for loading the configuration from files and the environment.
@@ -87,9 +90,9 @@ func (c *Config) loadTOML() {
 		return
 	}
 	defer func () {
-		err := pf.Close()
-		if err != nil {
-			c.Errors = append(c.Errors, err)
+		derr := pf.Close()
+		if derr != nil {
+			c.Errors = append(c.Errors, derr)
 		}
 	}()
 	filedata, err := toml.LoadReader(pf)
@@ -147,7 +150,7 @@ func (c *Config) toString(x interface{}) string {
 
 // ResolveInt loops through the listed possible values to find a non-missing one,
 // then parses it and casts it to an integer. If no values are present,
-// you get the zero integer value `0`.
+// you get the zero integer value `0`. Floating point values are rounded down.
 func (c *Config) ResolveInt(list ...*string) int {
 	for _, elem := range list {
 		if elem != nil && *elem != "" {
@@ -156,7 +159,7 @@ func (c *Config) ResolveInt(list ...*string) int {
 			if strings.Contains(*elem, ".") {
 				var v float32
 				var tv float64
-				tv, err = strconv.ParseFloat(*elem, 32)
+				tv, err = strconv.ParseFloat(*elem, 64)
 				v = float32(tv)
 				val = int64(v)
 			} else {
@@ -171,6 +174,24 @@ func (c *Config) ResolveInt(list ...*string) int {
 	}
 	c.Errors = append(c.Errors, fmt.Errorf("missing default int value"))
 	return 0
+}
+
+// ResolveFloat64 loops through the listed possible values to find a non-missing one,
+// then parses it and casts it to a float64. If no values are present,
+// you get the zero value.
+func (c *Config) ResolveFloat64(list ...*string) float64 {
+	for _, elem := range list {
+		if elem != nil && *elem != "" {
+			val, err := strconv.ParseFloat(*elem, 64)
+			if err != nil {
+				c.Errors = append(c.Errors, fmt.Errorf("unrecognized numeric value '%s': %w", *elem, err))
+			} else {
+				return val
+			}
+		}
+	}
+	c.Errors = append(c.Errors, fmt.Errorf("missing default int value"))
+	return 0.0
 }
 
 // stringToBool interprets a string as a bool, given the lists of TrueStrings and FalseStrings.

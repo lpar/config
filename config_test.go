@@ -1,7 +1,6 @@
 package config
 
 import (
-	"fmt"
 	"io/ioutil"
 	"os"
 	"path"
@@ -21,12 +20,20 @@ func TestMain(m *testing.M) {
 		panic(err)
 	}
 	defer func() {
-		os.RemoveAll(tmpdir)
-		fmt.Println("Remove tmpdir")
+		derr := os.RemoveAll(tmpdir)
+		if derr != nil {
+			panic(derr)
+		}
 	}()
-	os.Setenv("XDG_CONFIG_HOME", tmpdir)
-	os.Setenv("MY_BLANK_ENV_VAR", "")
-	os.Setenv("MY_ENV_VAR", "some bytes")
+	if err = os.Setenv("XDG_CONFIG_HOME", tmpdir); err != nil {
+		panic(err)
+	}
+	if err = os.Setenv("MY_BLANK_ENV_VAR", ""); err != nil {
+		panic(err)
+	}
+	if err = os.Setenv("MY_ENV_VAR", "some bytes"); err != nil {
+		panic(err)
+	}
 	os.Exit(m.Run())
 }
 
@@ -40,13 +47,19 @@ const TOML = `
 func TestConfig_FromFile(t *testing.T) {
 	lc := New("TestApp")
 	fn, _ := lc.prefsFileName()
-	os.MkdirAll(filepath.Dir(fn), 0700)
+	if err := os.MkdirAll(filepath.Dir(fn), 0700); err != nil {
+		t.Error("can't mkdir temporary directory for test: %w", err)
+	}
 	err := ioutil.WriteFile(fn, []byte(TOML), 0600)
 	if err != nil {
-		t.Errorf("can't write test file: %w", err)
+		t.Errorf("can't write test file: %v", err)
 	}
-	fmt.Println(fn)
-	defer os.Remove(fn)
+	defer func() {
+		derr := os.Remove(fn)
+		if derr != nil {
+			t.Error("error on cleanup: %w", derr)
+		}
+	}()
 	var tests = []struct {
 		key    string
 		output string
@@ -80,9 +93,10 @@ func TestConfig_ResolveString(t *testing.T) {
 		{ []*string{PS("one") }, "one", 0},
 		{ []*string{nil, PS("two") }, "two", 0},
 		{ []*string{nil, nil, PS("value with spaces") }, "value with spaces", 0},
+		{ []*string{nil, nil, PS("2.71828") }, "2.71828", 0},
 		{ []*string{nil, nil}, "", 1},
 	}
-	lc := New("ResolveInt")
+	lc := New("ResolveString")
 	for i, tt := range tests {
 		lc.Errors = nil
 		r := lc.ResolveString(tt.input...)
@@ -142,6 +156,7 @@ func TestConfig_ResolveInt(t *testing.T) {
 		{ []*string{PS("1") }, 1, 0},
 		{ []*string{nil, PS("0x2f") }, 47, 0},
 		{ []*string{nil, nil, PS("") }, 0, 1},
+		{ []*string{nil, nil, PS("2.612") }, 2, 0},
 		{ []*string{nil, nil, PS("a"), PS("2") }, 2, 1},
 	}
 	lc := New("ResolveInt")
@@ -156,6 +171,32 @@ func TestConfig_ResolveInt(t *testing.T) {
 		}
 	}
 }
+
+func TestConfig_ResolveFloat(t *testing.T) {
+	var tests = []struct{
+		input []*string
+		output float64
+		nerrs int
+	}{
+		{ []*string{PS("1") }, 1, 0},
+		{ []*string{nil, PS("3.14159") }, 3.14159, 0},
+		{ []*string{nil, nil, PS("-1") }, -1.0, 0},
+		{ []*string{nil, nil, PS("-2.612") }, -2.612, 0},
+		{ []*string{nil, nil, PS("a"), PS("2") }, 2, 1},
+	}
+	lc := New("ResolveInt")
+	for i, tt := range tests {
+		lc.Errors = nil
+		r := lc.ResolveFloat64(tt.input...)
+		if r != tt.output {
+			t.Errorf("ResolveInt test %d gave %v, expected %v", i+1, r, tt.output)
+		}
+		if len(lc.Errors) != tt.nerrs {
+			t.Errorf("ResolveInt test %d gave %d errors, expected %d", i+1, len(lc.Errors), tt.nerrs)
+		}
+	}
+}
+
 
 func TestConfig_stringToBool(t *testing.T) {
 	var tests = []struct{
