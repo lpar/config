@@ -1,6 +1,8 @@
 
 # lpar/config
 
+[![Go Report Card](https://goreportcard.com/badge/github.com/lpar/config)](https://goreportcard.com/report/github.com/lpar/config)
+
 A library which helps you load and resolve basic configuration from command line flags, environment variables and a TOML config file. You can think of it as a minimal compact construction kit for building your own `LoadConfig` method to call from `main`.
 
 ## Features

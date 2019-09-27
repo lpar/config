@@ -15,17 +15,23 @@ func TestMain(m *testing.M) {
 	conf = New("MyAppName")
 	conf.TrueStrings = []string{"true", "y"}
 	conf.FalseStrings = []string{"false", "no"}
-	tmpdir, err := ioutil.TempDir("", "GoLparConfigTest")
+	testfile, err := makeTestFile()
 	if err != nil {
 		panic(err)
 	}
+	testdir := filepath.Dir(testfile)
 	defer func() {
-		derr := os.RemoveAll(tmpdir)
+		derr := os.RemoveAll(testdir)
 		if derr != nil {
 			panic(derr)
 		}
 	}()
-	if err = os.Setenv("XDG_CONFIG_HOME", tmpdir); err != nil {
+	conf.FindAndLoad(
+		string(os.PathSeparator) + "non_existent_dir",
+		os.TempDir() + "non_existent_file.toml",
+		testfile,
+	)
+	if err = os.Setenv("XDG_CONFIG_HOME", testdir); err != nil {
 		panic(err)
 	}
 	if err = os.Setenv("MY_BLANK_ENV_VAR", ""); err != nil {
@@ -37,6 +43,16 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
+func makeTestFile() (string, error) {
+	tmpdir, err := ioutil.TempDir("", "GoLparConfigTest")
+	if err != nil {
+		return "", err
+	}
+	fn := path.Join(tmpdir, "test.toml")
+	err = ioutil.WriteFile(fn, []byte(TOML), 0600)
+	return fn, err
+}
+
 const TOML = `
  alpha = "Some string"
  beta = 42
@@ -45,21 +61,6 @@ const TOML = `
 `
 
 func TestConfig_FromFile(t *testing.T) {
-	lc := New("TestApp")
-	fn, _ := lc.prefsFileName()
-	if err := os.MkdirAll(filepath.Dir(fn), 0700); err != nil {
-		t.Error("can't mkdir temporary directory for test: %w", err)
-	}
-	err := ioutil.WriteFile(fn, []byte(TOML), 0600)
-	if err != nil {
-		t.Errorf("can't write test file: %v", err)
-	}
-	defer func() {
-		derr := os.Remove(fn)
-		if derr != nil {
-			t.Error("error on cleanup: %w", derr)
-		}
-	}()
 	var tests = []struct {
 		key    string
 		output string
@@ -70,7 +71,7 @@ func TestConfig_FromFile(t *testing.T) {
 		{"delta", "3.14159"},
 	}
 	for _, tt := range tests {
-		r := lc.FromFile(tt.key)
+		r := conf.FromFile(tt.key)
 		if r == nil {
 			t.Errorf("FromFile(%s) gave nil", tt.key)
 		} else {
@@ -79,7 +80,7 @@ func TestConfig_FromFile(t *testing.T) {
 			}
 		}
 	}
-	if lc.FromFile("zeta") != nil {
+	if conf.FromFile("zeta") != nil {
 		t.Errorf("FromFile(zeta) gave non-nil")
 	}
 }

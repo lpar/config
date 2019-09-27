@@ -14,23 +14,13 @@ import (
 // Basis is an enum used for indicating the basis for locating the config file.
 type Basis int
 
-const (
-	// RelativeToUser indicates that the config is located relative to user's home directory / `XDG_CONFIG_HOME`
-	RelativeToUser Basis = iota
-	// RelativeToExecutable indicates that the config is located in the same directory as the executable, for cloud web applications
-	RelativeToExecutable
-)
-
 // Config stores parameters and data needed for loading the configuration from files and the environment.
 type Config struct {
 	AppName       string // Application name
 	FileBase      string // Base name for config file, default "config"
-	Location      Basis  // Where to locate the config, default RelativeToUser
+	Location      Basis  // Where to locate the config, default ORelativeToUser
 	fileData      *toml.Tree
-	loadAttempted bool     // Did we try to lazy-load the config file yet?
-	PrefsFile     string   // The resolved name of the preferences file, for display in your error messages
 	Errors        []error  // List of errors encountered while trying to load the config
-	Warnings      []error  // List of warnings encountered while trying to load the config
 	TrueStrings   []string // String values which count as `true` (case-insensitive), default `["true"]`
 	FalseStrings  []string // String values which count as `false` (case-insensitive), default `["false"]`
 }
@@ -41,58 +31,78 @@ func New(appname string) *Config {
 	return &Config{
 		AppName:      appname,
 		FileBase:     "config",
-		Location:     RelativeToUser,
 		TrueStrings:  []string{"true"},
 		FalseStrings: []string{"false"},
 	}
 }
 
-// prefsFileName works out the appropriate preferences file name
-func (c *Config) prefsFileName() (string, error) {
-	if c.Location == RelativeToExecutable {
-		dir, err := os.Executable()
-		if err != nil {
-			return dir, err
-		}
-		return filepath.Join(dir, c.FileBase+".toml"), nil
+// --- File resolving ---
+
+// FileFromExecutable computes the config file name based on the location of executable.
+// Used for cloud applications.
+func (c *Config) FileFromExecutable() string {
+	dir, err := os.Executable()
+	if err != nil {
+		c.Errors = append(c.Errors, err)
+		return ""
 	}
+	return filepath.Join(filepath.Dir(dir), c.FileBase+".toml")
+}
+
+// FileFromHome looks for the config file in the standard location for the user's OS, as per Go's
+// `os.UserConfigDir`. Example default filenames:
+//  Linux: ~/.config/AppName/config.toml
+//  Mac: ~/Library/Application Support/AppName/config.toml
+//  Windows: %AppData%\AppName\config.toml
+func (c *Config) FileFromHome() string {
 	dir, err := os.UserConfigDir()
 	if err != nil {
-		return dir, err
+		c.Errors = append(c.Errors, err)
+		return ""
 	}
-	return filepath.Join(dir, c.AppName, c.FileBase+".toml"), nil
+	return filepath.Join(dir, c.AppName, c.FileBase+".toml")
 }
 
-// tomlError adds a TOML-related error to the list of errors
-func (c *Config) tomlError(filename string, stage string, err error) {
-	werr := fmt.Errorf("can't %s TOML preference file %s: %w", stage, filename, err)
-	if stage == "locate" {
-		c.Warnings = append(c.Warnings, werr)
-	} else {
-		c.Errors = append(c.Errors, werr)
+func fileExists(name string) (bool, error) {
+	_, err := os.Stat(name)
+	if os.IsNotExist(err) {
+		return false, nil
 	}
+	if err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
-// loadTOML attempts to lazy-load the TOML file, if an attempt hasn't already been made.
-func (c *Config) loadTOML() {
-	if c.loadAttempted {
-		return
+// Find locates the first extant TOML file by checking the supplied list of possible locations.
+// Empty strings are ignored. It returns the filename.
+func (c *Config) Find(list ...string) string {
+	for _, elem := range list {
+		if elem != "" {
+			exists, err := fileExists(elem)
+			if err != nil {
+				fmt.Printf("%v", err)
+				continue
+			}
+			if exists {
+				return elem
+			}
+		}
 	}
-	c.loadAttempted = true
-	pfile, err := c.prefsFileName()
+	return ""
+}
+
+// Load loads the TOML config file specified. Any errors are appended to Config.Errors
+func (c *Config) Load(filename string) {
+	pf, err := os.Open(filename)
 	if err != nil {
 		c.Errors = append(c.Errors, err)
 		return
 	}
-	pf, err := os.Open(pfile)
-	if err != nil {
-		c.Warnings = append(c.Warnings, err)
-		return
-	}
 	defer func() {
-		derr := pf.Close()
-		if derr != nil {
-			c.Errors = append(c.Errors, derr)
+		err = pf.Close()
+		if err != nil {
+			c.Errors = append(c.Errors, err)
 		}
 	}()
 	filedata, err := toml.LoadReader(pf)
@@ -101,22 +111,20 @@ func (c *Config) loadTOML() {
 		return
 	}
 	c.fileData = filedata
-	c.PrefsFile = pfile
 }
 
-// FromFile obtains a configuration value from the TOML config file, given a string key.
-func (c *Config) FromFile(key string) *string {
-	c.loadTOML()
-	if c.fileData == nil {
-		return nil
+// FindAndLoad locates the first config file from the list of possibilities, then loads it.
+// Empty strings are ignored, and the name of the file that was loaded is returned.
+// It's equivalent to Find followed by Load.
+func (c *Config) FindAndLoad(list ...string) string {
+	fn := c.Find(list...)
+	if fn != "" {
+		c.Load(fn)
 	}
-	if c.fileData.Has(key) {
-		v := c.fileData.Get(key)
-		x := c.toString(v)
-		return &x
-	}
-	return nil
+	return fn
 }
+
+// --- value resolution
 
 // ResolveString loops through the listed possible values to find a non-missing one,
 // and return it. If no values are present, you get the zero string `""`.
@@ -233,6 +241,19 @@ func (c *Config) ResolveBool(list ...*string) bool {
 func (c *Config) FromEnv(key string) *string {
 	x, ok := os.LookupEnv(key)
 	if ok {
+		return &x
+	}
+	return nil
+}
+
+// FromFile obtains a configuration value from the TOML config file, given a string key.
+func (c *Config) FromFile(key string) *string {
+	if c.fileData == nil {
+		return nil
+	}
+	if c.fileData.Has(key) {
+		v := c.fileData.Get(key)
+		x := c.toString(v)
 		return &x
 	}
 	return nil

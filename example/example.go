@@ -2,8 +2,8 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"log"
-	"os"
 
 	"github.com/lpar/config"
 )
@@ -22,10 +22,15 @@ func loadConfig() {
 	conf.TrueStrings = []string{"true", "yes"}
 	conf.FalseStrings = []string{"false", "no"}
 
-	// Look for a Cloud Foundry environment variable, and if we find one, switch to cloud app mode.
-	// The library will then expect the config file to be in the same directory as the executable.
-	if os.Getenv("APP_DIR") != "" {
-		conf.Location = config.RelativeToExecutable
+	// Load a config file from one of the following places, in order of preference
+	locn := conf.FindAndLoad(
+		conf.FileFromExecutable(),
+		conf.FileFromHome(),
+		"/tmp/test.toml",
+	)
+
+	if locn != "" {
+  	fmt.Printf("Loaded config from %s\n", locn)
 	}
 
 	// Define a boolean debug flag with the following resolution rules:
@@ -51,6 +56,7 @@ func loadConfig() {
 			conf.FromEnv("APP_DIR"),
 			conf.FromFile("home"),
 			conf.UserHomeDir(),
+			conf.Executable(),
 			conf.FromEnv("HOME"),
 			conf.Default("/home/meta"),
 		), "Base directory for application")
@@ -58,10 +64,12 @@ func loadConfig() {
 	// Define an age integer variable with the following rules:
 	// - If `-age` is on the command line, use the corresponding value.
 	// - Otherwise, look for `USER_AGE` in the environment.
+	// - Otherwise, check the config file.
 	// - Otherwise, assume it's 16.
 	age := flag.Int("age",
 		conf.ResolveInt(
 			conf.FromEnv("USER_AGE"),
+			conf.FromFile("age"),
 			conf.Default(16),
 		),
 		"Age of user")
