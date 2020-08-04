@@ -3,7 +3,9 @@
 
 [![Go Report Card](https://goreportcard.com/badge/github.com/lpar/config)](https://goreportcard.com/report/github.com/lpar/config)
 
-A library which helps you load and resolve basic configuration from command line flags, environment variables and a TOML config file. You can think of it as a minimal compact construction kit for building your own `LoadConfig` method to call from `main`.
+This is an experiment in building a library which helps load and resolve basic configuration from command line flags, environment variables and a TOML config file. You can think of it as a minimal compact construction kit for building your own `LoadConfig` method to call from `main`.
+
+I'm still not sure how I feel about it. I need to use it some more, I guess.
 
 ## Features
 
@@ -30,7 +32,7 @@ And here are some key limitations:
 
 ## Usage example
 
-See `[example/example.go][example]` for an excessively commented example.
+See [example/example.go][example] for an excessively commented example.
 
 [example]: https://github.com/lpar/config/blob/master/example/example.go
 
@@ -40,13 +42,15 @@ Same license as Go, see LICENSE file.
  
 ## Why did you write this?
 
-Yes, I know, there are [lots of configuration libraries out there][libs]. However, I didn't like any of them, they all seemed 
+There are [lots of configuration libraries out there][libs]. However, I didn't like any of them, they all seemed 
 to suffer from one of the following problems:
 
  1. Lack of flexibility. For example, [ff][ff] always expects config file values to override environment values, and [koan][koan] always does the reverse. I sometimes want environment to override the config file (e.g. detecting Cloud Foundry), and sometimes want the config file to override the environment (e.g. finding the HOME directory).
  2. Complexity. I've used [viper][viper], but it's a bit imposing. Five different methods just for implementing reading environment variables, for example.
  3. Bloat. There's [gookit/config][goo], which looks simple enough to use, but it's 2,600 lines of code with another 26,920 lines of code in dependencies.
  4. UDOG/YAGNI issues. Some of the libraries seem to suffer from an Unnecessary Degree Of Generality, offering to let me define my own flag provider to support any custom flag syntax or file format. Others provide facilities to merge multiple config files and validate them against a schema. I just want to read a simple config so my app can start. I don't need a built-in `etcd` or Consul client, chances are You Ain't Gonna Need That.
+
+I decided to see if I could come up with something better. This was the result.
  
 [libs]: https://github.com/avelino/awesome-go#configuration 
 [ff]: https://github.com/peterbourgon/ff

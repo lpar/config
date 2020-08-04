@@ -27,8 +27,8 @@ func TestMain(m *testing.M) {
 		}
 	}()
 	conf.FindAndLoad(
-		string(os.PathSeparator) + "non_existent_dir",
-		os.TempDir() + "non_existent_file.toml",
+		string(os.PathSeparator)+"non_existent_dir",
+		os.TempDir()+"non_existent_file.toml",
 		testfile,
 	)
 	if err = os.Setenv("XDG_CONFIG_HOME", testdir); err != nil {

@@ -16,13 +16,13 @@ type Basis int
 
 // Config stores parameters and data needed for loading the configuration from files and the environment.
 type Config struct {
-	AppName       string // Application name
-	FileBase      string // Base name for config file, default "config"
-	Location      Basis  // Where to locate the config, default ORelativeToUser
-	fileData      *toml.Tree
-	Errors        []error  // List of errors encountered while trying to load the config
-	TrueStrings   []string // String values which count as `true` (case-insensitive), default `["true"]`
-	FalseStrings  []string // String values which count as `false` (case-insensitive), default `["false"]`
+	AppName      string // Application name
+	FileBase     string // Base name for config file, default "config"
+	Location     Basis  // Where to locate the config, default ORelativeToUser
+	fileData     *toml.Tree
+	Errors       []error  // List of errors encountered while trying to load the config
+	TrueStrings  []string // String values which count as `true` (case-insensitive), default `["true"]`
+	FalseStrings []string // String values which count as `false` (case-insensitive), default `["false"]`
 }
 
 // New returns a Config object which can be used to look up configuration values from the environment

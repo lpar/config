@@ -30,7 +30,7 @@ func loadConfig() {
 	)
 
 	if locn != "" {
-  	fmt.Printf("Loaded config from %s\n", locn)
+		fmt.Printf("Loaded config from %s\n", locn)
 	}
 
 	// Define a boolean debug flag with the following resolution rules:
